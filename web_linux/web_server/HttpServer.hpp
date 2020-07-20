@@ -4,6 +4,8 @@
 #include"Protocol.hpp"
 #include<iostream>
 #include<pthread.h>
+#include"Sock.hpp"
+#include<unistd.h>
 
 #define Default_port 8081
 
@@ -18,7 +20,10 @@ class HttpServer{
     HttpServer(int _port = Default_port):port(_port),listen_sock(-1)
     {}
     ~HttpServer()
-    {}
+    {
+      if(listen_sock > 0)
+        close(listen_sock);
+    }
   
   public:
     void InitServer()
@@ -29,6 +34,7 @@ class HttpServer{
     }
     void Start()
     {
+      LOG(Normal,"server start success!");
       for(;;)
       {
         int sock = Sock::Accept(listen_sock);
@@ -36,7 +42,8 @@ class HttpServer{
         {
           LOG(Normal,"Get a new link");
           pthread_t tid;
-          pthread_create(&tid,nullptr,Entry::HanderRequest,(void *)sock);
+          int *p = new int(sock);
+          pthread_create(&tid,nullptr,Entry::HanderRequest,(void *)p);
           pthread_detach(tid);
 
         }

@@ -9,6 +9,7 @@ using namespace std;
 #define SOCK_CREAT 2
 #define BIND_ERROR 3
 #define LISTEN_ERROR 4
+#define NORMAL_ERR -1
 
 #define Normal 1
 #define Warning 2

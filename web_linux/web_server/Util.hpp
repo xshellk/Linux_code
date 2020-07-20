@@ -25,4 +25,26 @@ class Util{
       ss >> length;
       return length;
     }
+    static string SuffixToTpye(string str)
+    {
+      string ret;
+      if(str == ".html" || str == ".htm")
+        ret = "text/html";
+      else if(str == ".js")
+        ret = "application/x-javascript";
+      else if(str == ".css")
+        ret = "text/css";
+      else if(str == ".jpg")
+        ret = "application/x-jpg";
+      else 
+        ret = "text/html";
+
+      return ret;
+    }
+    static string IntToString(int num)
+    {
+      stringstream ss;
+      ss << num;
+      return ss.str();
+    }
 };

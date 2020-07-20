@@ -24,6 +24,8 @@ public:
       LOG(Fatal,"creat sock error");
       exit(SOCK_CREAT);
     }
+    int opt = 1;
+    setsockopt(listen_sock,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt));
     return listen_sock;
   }
   static void Bind(int sock,short port)

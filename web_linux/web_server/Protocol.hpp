@@ -1,15 +1,18 @@
 #pragma once 
 
 #include<iostream>
+#include<unistd.h>
 #include<string>
 #include<strings.h>
 #include<sstream>
+#include<unordered_map>
 #include<sys/types.h>
 #include<sys/stat.h>
 #include<sys/socket.h>
+#include<sys/sendfile.h>
+#include<fcntl.h>
 #include"Log.hpp"
 #include"Util.hpp"
-#include<unordered_map>
 
 using namespace std;
 
@@ -32,8 +35,12 @@ class HttpRequest{
 
     string path;
     string query_string;
+    int fd;
 
     bool cgi;
+
+    int file_size;
+    string suffix;
 
 
   public:
@@ -52,15 +59,20 @@ class HttpRequest{
     {
       stringstream ss(request_line);
       ss >> method >> url >> version;
-      cout << "method is "  << method << endl;
-      cout << "url is " << url << endl;
-      cout << "version is " << version << endl;
+      cout << "--------------------------------------------" << endl;
+      cout << "Method is "  << method << endl;
+      cout << "Url is " << url << endl;
+      cout << "Version is " << version << endl;
+      cout << "--------------------------------------------" << endl;
+      if(url == "/")
+        url += WELCOME_PAGE;
     }
+
     void RequestHanderPrase()
     {
       int start = 0;
       size_t pos = request_hander.find("\n");
-      while(pos != string::npos)
+      if(pos != string::npos)
       {
         string str = request_hander.substr(start,pos - start);
       }
@@ -93,9 +105,18 @@ class HttpRequest{
     {
       return strcasecmp(method.c_str(),"GET") == 0;
     }
+    bool IsPost()
+    {
+      return strcasecmp(method.c_str(),"POST") == 0;
+    }
+    bool IsCgi()
+    {
+      return cgi;
+    }
     bool PathIsLegal()
     {
       struct stat st;
+      bool ret = true;
       if(stat(path.c_str(),&st) == 0)
       {
         if(S_ISDIR(st.st_mode))
@@ -106,17 +127,33 @@ class HttpRequest{
           }
           path += WELCOME_PAGE;
         }
-        else 
+        else if((st.st_mode & S_IXUSR) || (st.st_mode & S_IXGRP) || (st.st_mode & S_IXOTH)) 
         {
           //cgi
+          cgi = true;
+        }
+        else{
+          //
+        }
+        file_size = st.st_size;
+        size_t pos = path.rfind('.');
+        if(pos == string::npos)
+        {
+          suffix = ".html";
+        }
+        else 
+        {
+          suffix = path.substr(pos);
         }
 
       } 
       else 
       {
         //404
+        ret = false;
       }
-      
+
+      return ret; 
     }
 
     
@@ -131,9 +168,21 @@ class HttpRequest{
       }
       return Util::StringToInt(it->second);
     }
+    string GetSuffix()
+    {
+      return suffix;
+    }
+    int GetFileSize()
+    {
+      return file_size;
+    }
+    int GetFd()
+    {
+      return fd;
+    }
     void Show()
     {
-      cout << "#############################start##############################";
+      cout << "#############################start##############################" << endl;
       cout << "debug : " << request_line;
       cout << "debug : " << request_hander; 
       cout << "debug : " << request_black;
@@ -142,10 +191,22 @@ class HttpRequest{
       cout << "debug, url: " << url << endl;
       cout << "debug, version: " << version << endl;
       cout << "debug, path: " << path << endl;
+      cout << "debug, suffix: " << GetSuffix()  <<endl;
       cout << "debug, query_string: " << query_string << endl;
-      cout << "#############################start##############################";
+      cout << "#############################end##############################" << endl;
     }
-    HttpRequest():request_black("\n")
+    bool OpenRescources()
+    {
+      bool ret = true;
+      fd = open(path.c_str(),O_RDONLY);
+      if(fd < 0)
+      {
+        LOG(Error,"open file error");
+        ret = false;
+      }
+      return ret;
+    }
+    HttpRequest():request_black("\n"),path(WWWROOT),cgi(false),fd(-1),file_size(0)
     {}
 
     ~HttpRequest()
@@ -157,7 +218,35 @@ class HttpResponse{
     string response_line;
     string response_hander;
     string response_black;
-    string response_text;
+    string response_body;
+
+  public:
+      string GetResponseLine()
+      {
+        return response_line;
+      }
+      string GetResponseHander()
+      {
+        return response_hander;
+      }
+      string GetResponseBlack()
+      {
+        return response_black;
+      }
+
+    void SetHttpResponseLine(string &line)
+    {
+      response_line = line;
+    }
+    void AddHttpResponseHander(string &line)
+    {
+      response_hander += line;
+    }
+    HttpResponse():response_black("\n"){
+    }
+    ~HttpResponse()
+    {}
+
 
 };
 
@@ -218,9 +307,9 @@ class Connect{
       rq->SetHttpRequestLine(request_line);
       rq->SetHttpRequestHander(request_hander);
     }
-    void RecvHttpRequestBody(HttpRequest &rq)
+    void RecvHttpRequestBody(HttpRequest *rq)
     {
-      int content_length = rq.GetContentLength();
+      int content_length = rq->GetContentLength();
       if(content_length > 0)
       {
         string body;
@@ -231,10 +320,20 @@ class Connect{
           body.push_back(c);
           content_length--;
         }
-        rq.SetHttpRequestBody(body);
+        rq->SetHttpRequestBody(body);
       }
-      rq.SetUrlToPath();
-      rq.SetCgi();
+      rq->SetUrlToPath();
+      rq->SetCgi();
+    }
+    void SendResponse(HttpRequest*rq,HttpResponse*rsp)
+    {
+      string line = rsp->GetResponseLine();
+      line += rsp->GetResponseHander();
+      line += rsp->GetResponseBlack();
+      
+      send(sock,line.c_str(),line.size(),0);
+
+      sendfile(sock,rq->GetFd(),nullptr,rq->GetFileSize());
     }
     Connect(int _sock):sock(_sock)
     {}
@@ -245,9 +344,64 @@ class Connect{
 
 class Entry{
   public:
+    static void MakeResponse(HttpRequest* rq,HttpResponse* rsp)
+    {
+      if(rq->IsCgi())
+      {
+        //TODO
+      }
+      string line = "HTTP/1.0 200 OK\r\n";
+      rsp->SetHttpResponseLine(line);
+      line = "Content-Type: ";
+      line += Util::SuffixToTpye(rq->GetSuffix());
+      line += "\r\n";
+      rsp->AddHttpResponseHander(line);
+      line = "Content-Length: ";
+      line += Util::IntToString(rq->GetFileSize());
+      line += "\r\n";
+      rsp->AddHttpResponseHander(line);
+
+      rq->OpenRescources();
+    }
+    static int ProcessCGI(Connect*conn,HttpRequest*rq,HttpResponse*rsp)
+    {
+      LOG(Normal,"ProcessCgi");
+      int read_pipe[2];
+      int write_pipe[2];
+      pipe(read_pipe);
+      pipe(write_pipe);
+
+      pid_t id = fork();
+      if(id < 0)
+      {
+        //
+        LOG(Error,"fork error");
+        return 404;
+      }
+      else if(id == 0)
+      {
+        //child
+        close(read_pipe[1]);
+        close(write_pipe[0]);
+      }
+      else 
+      {
+        //father
+        close(read_pipe[0]);
+        close(write_pipe[1]);
+      }
+    }
+    static void ProcessNormal(Connect*conn,HttpRequest*rq,HttpResponse*rsp)
+    {
+      LOG(Normal,"ProcessNormal");
+      MakeResponse(rq,rsp);
+      conn->SendResponse(rq,rsp);
+    }
     static void *HanderRequest(void * args)
     {
-      int sock = (int)*args;
+      int *p = (int*)args;
+      int sock = *p;
+      int code = 200;
       Connect *cnn = new Connect(sock);
       HttpRequest *rq = new HttpRequest();
       HttpResponse *rsp = new HttpResponse();
@@ -258,28 +412,43 @@ class Entry{
       if(!rq->IsMethodOk())
       {
         LOG(Warning ,"request method error");
+        goto end;
         //TODO
       }
 
       rq->RequestHanderPrase();
 
+      cout << "do handerParse ok" << endl;
       if(rq->IsGet())
       {
         rq->UrlPrase();
       }
-      else{
+      if(rq->IsPost())
+      {
         cnn->RecvHttpRequestBody(rq);
       }
-
-      if(rq->PathIsLegal())
+      if(!rq->PathIsLegal())
       {
-
+        code = 404;
+        LOG(NORMAL,"path is not legal");
+        goto end;
       }
 
+      if(rq->IsCgi())
+      {
+        LOG(NORMAL,"exec by cgi");
+        ProcessCGI(cnn,rq,rsp);
+      }
+      else{
+        LOG(NORMAL,"exec by non cgi");
+        ProcessNormal(cnn,rq,rsp);
+      }
 
+end:
       delete cnn;
       delete rq;
       delete rsp;
-      
+
+      return nullptr;
     }
 };
