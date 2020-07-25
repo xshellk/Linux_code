@@ -2,11 +2,13 @@
 
 #include<iostream>
 #include<unistd.h>
+#include<stdlib.h>
 #include<string>
 #include<strings.h>
 #include<sstream>
 #include<unordered_map>
 #include<sys/types.h>
+#include<sys/wait.h>
 #include<sys/stat.h>
 #include<sys/socket.h>
 #include<sys/sendfile.h>
@@ -84,14 +86,12 @@ class HttpRequest{
       {
         path += url.substr(0,pos);
         query_string += url.substr(pos+1);
-
         cgi = true;
       }
       else 
       {
         path += url;
       }
-
     }
 
     bool IsMethodOk()
@@ -117,6 +117,7 @@ class HttpRequest{
     {
       struct stat st;
       bool ret = true;
+      cout << "path is :" << path << endl;
       if(stat(path.c_str(),&st) == 0)
       {
         if(S_ISDIR(st.st_mode))
@@ -180,6 +181,18 @@ class HttpRequest{
     {
       return fd;
     }
+    string GetQueryString()
+    {
+      return query_string;
+    }
+    string GetRequestBody()
+    {
+      return request_body;
+    }
+    string GetPath()
+    {
+      return path;
+    }
     void Show()
     {
       cout << "#############################start##############################" << endl;
@@ -192,6 +205,7 @@ class HttpRequest{
       cout << "debug, version: " << version << endl;
       cout << "debug, path: " << path << endl;
       cout << "debug, suffix: " << GetSuffix()  <<endl;
+      cout << "dubug, length: " << GetContentLength() << endl;
       cout << "debug, query_string: " << query_string << endl;
       cout << "#############################end##############################" << endl;
     }
@@ -242,6 +256,14 @@ class HttpResponse{
     {
       response_hander += line;
     }
+    void SetResponseBody(string &str)
+    {
+      response_body = str;
+    }
+    string GetResponseBody()
+    {
+      return response_body;
+    }
     HttpResponse():response_black("\n"){
     }
     ~HttpResponse()
@@ -254,8 +276,9 @@ class Connect{
   private:
     int sock;
   public:
-    void RecvLine(string &line)
+    bool RecvLine(string &line)
     {
+      bool ret = true;
       char c = 'X' ;
       while(c != '\n')
       {
@@ -279,33 +302,49 @@ class Connect{
         else 
         {
           LOG(Warning,"recv request line error");
+          ret = false;
           break;
         }
       }
+      return ret;
       
     }
-    void RecvHttpRequestLine(string &request_line)
+    bool RecvHttpRequestLine(string &request_line)
     {
-      RecvLine(request_line);
+      return RecvLine(request_line);
     }
-    void RecvHttpRequestHander(string &request_hander)
+    bool RecvHttpRequestHander(string &request_hander)
     {
+      bool flag = true;
       string line = "";
       do{
         line = "";
-        RecvLine(line);
-        if(line != "\n")
-          request_hander += line;
+        if(RecvLine(line))
+        {
+          if(line != "\n")
+          {
+            request_hander += line;
+          }
+        }
+        else 
+        {
+          flag = false;
+          break;
+        }
       }while(line != "\n");
+      return flag;
     }
-    void RecvHttpRequest(HttpRequest*rq)
+    int RecvHttpRequest(HttpRequest*rq)
     {
       string request_line;
       string request_hander;
-      RecvHttpRequestLine(request_line);
-      RecvHttpRequestHander(request_hander);
-      rq->SetHttpRequestLine(request_line);
-      rq->SetHttpRequestHander(request_hander);
+      if(RecvHttpRequestLine(request_line)&&RecvHttpRequestHander(request_hander))
+      {
+        rq->SetHttpRequestLine(request_line);
+        rq->SetHttpRequestHander(request_hander);
+        return 200;
+      }
+      return 404;
     }
     void RecvHttpRequestBody(HttpRequest *rq)
     {
@@ -332,8 +371,14 @@ class Connect{
       line += rsp->GetResponseBlack();
       
       send(sock,line.c_str(),line.size(),0);
-
-      sendfile(sock,rq->GetFd(),nullptr,rq->GetFileSize());
+      if(!rq->IsCgi())
+      {
+        sendfile(sock,rq->GetFd(),nullptr,rq->GetFileSize());
+      }
+      else{
+        string str = rsp->GetResponseBody();
+        send(sock,str.c_str(),str.size(),0);
+      }
     }
     Connect(int _sock):sock(_sock)
     {}
@@ -344,34 +389,51 @@ class Connect{
 
 class Entry{
   public:
-    static void MakeResponse(HttpRequest* rq,HttpResponse* rsp)
+    static void MakeResponse(HttpRequest* rq,HttpResponse* rsp,int code)
     {
-      if(rq->IsCgi())
-      {
-        //TODO
-      }
-      string line = "HTTP/1.0 200 OK\r\n";
+      string line;
+      line = Util::GetStatusLine(code);
+
       rsp->SetHttpResponseLine(line);
       line = "Content-Type: ";
       line += Util::SuffixToTpye(rq->GetSuffix());
+      cout << "debug , content-type is " << line << endl;
       line += "\r\n";
       rsp->AddHttpResponseHander(line);
       line = "Content-Length: ";
-      line += Util::IntToString(rq->GetFileSize());
-      line += "\r\n";
-      rsp->AddHttpResponseHander(line);
-
-      rq->OpenRescources();
+      if(!rq->IsCgi())
+      {
+        line += Util::IntToString(rq->GetFileSize());
+        line += "\r\n";
+        rsp->AddHttpResponseHander(line);
+        rq->OpenRescources();
+      }
+      else
+      {
+        line += Util::IntToString((rsp->GetResponseBody()).size());
+        line += "\r\n";
+        rsp->AddHttpResponseHander(line);
+      }
     }
     static int ProcessCGI(Connect*conn,HttpRequest*rq,HttpResponse*rsp)
     {
+      string content_length;
+      string args;
       LOG(Normal,"ProcessCgi");
       int read_pipe[2];
       int write_pipe[2];
       pipe(read_pipe);
       pipe(write_pipe);
-
+      if(rq->IsGet())
+      {
+        args = rq->GetQueryString();
+      }
+      else if(rq->IsPost())
+      {
+        args = rq->GetRequestBody();
+      }
       pid_t id = fork();
+
       if(id < 0)
       {
         //
@@ -383,19 +445,44 @@ class Entry{
         //child
         close(read_pipe[1]);
         close(write_pipe[0]);
+
+        dup2(read_pipe[0],0);
+        dup2(write_pipe[1],1);
+        content_length = "Content-Length=";
+        content_length += Util::IntToString(args.size());
+        putenv((char *)content_length.c_str());
+        string _path = rq->GetPath();
+        execl(_path.c_str(),_path.c_str(),nullptr);
+        
+        LOG(Fatal,"execl error");
       }
       else 
       {
         //father
         close(read_pipe[0]);
         close(write_pipe[1]);
+        
+        cout << args << endl;
+        for(auto i = 0;i < args.size();i++)
+        {
+          write(read_pipe[1],&args[i],1);
+        }
+        char c;
+        string body;
+        while(read(write_pipe[0],&c,1) > 0)
+        {
+          body.push_back(c);
+        }
+
+        rsp->SetResponseBody(body);
+        pid_t ret = waitpid(id,nullptr,0);
+        if(ret < 0)
+        {
+          LOG(Error,"watipid error");
+          return 404;
+        }
       }
-    }
-    static void ProcessNormal(Connect*conn,HttpRequest*rq,HttpResponse*rsp)
-    {
-      LOG(Normal,"ProcessNormal");
-      MakeResponse(rq,rsp);
-      conn->SendResponse(rq,rsp);
+      return 200;
     }
     static void *HanderRequest(void * args)
     {
@@ -406,8 +493,17 @@ class Entry{
       HttpRequest *rq = new HttpRequest();
       HttpResponse *rsp = new HttpResponse();
 
-      cnn->RecvHttpRequest(rq);
-      rq->RequestLinePrase();
+      code = cnn->RecvHttpRequest(rq);
+      if(code == 200)
+      {
+        rq->RequestLinePrase();
+        rq->RequestHanderPrase();
+      }
+      else 
+      {
+        LOG(Error,"recv http request error");
+        goto end;
+      }
 
       if(!rq->IsMethodOk())
       {
@@ -415,10 +511,6 @@ class Entry{
         goto end;
         //TODO
       }
-
-      rq->RequestHanderPrase();
-
-      cout << "do handerParse ok" << endl;
       if(rq->IsGet())
       {
         rq->UrlPrase();
@@ -433,18 +525,20 @@ class Entry{
         LOG(NORMAL,"path is not legal");
         goto end;
       }
-
+      //rq->Show();
       if(rq->IsCgi())
       {
         LOG(NORMAL,"exec by cgi");
-        ProcessCGI(cnn,rq,rsp);
+        code = ProcessCGI(cnn,rq,rsp);
       }
       else{
         LOG(NORMAL,"exec by non cgi");
-        ProcessNormal(cnn,rq,rsp);
       }
 
 end:
+      MakeResponse(rq,rsp,code);
+      cnn->SendResponse(rq,rsp);
+
       delete cnn;
       delete rq;
       delete rsp;
