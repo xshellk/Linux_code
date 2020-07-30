@@ -2,7 +2,12 @@
 #include <unistd.h>
 #include <string>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/sendfile.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "Util.hpp"
+
 
 using namespace std;
   
@@ -45,13 +50,14 @@ int main()
             read(0, &c, 1);
             args.push_back(c);
         }
+        struct stat st;
+        stat("./q.html",&st);
+        int fd = open("./q.html",O_RDONLY);
+        size_t file_size = st.st_size;
+        sendfile(1,fd,nullptr,file_size);
+        close(fd);
 
-        cout << "<html><h3>";
-        string x, y;
-        GetSubString(args, x, y);
-      
-        cout << "hello :" << "<br/>" << "name: " << x << "<br/>" << "pwd: " << y << "<br/>"<< endl;
-        cout << "</h3></html>" << endl;
+
     }else{
         cout << "get content length error!" << endl;
     }

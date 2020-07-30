@@ -36,6 +36,8 @@ class Util{
         ret = "text/css";
       else if(str == ".jpg")
         ret = "application/x-jpg";
+      else if(str == ".ico")
+        ret = "image/x-ico";
       else 
         ret = "text/html";
 
