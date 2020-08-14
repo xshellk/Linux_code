@@ -69,14 +69,51 @@ bool parseTitle(const string&input,string*title)
   return true;
 }
 
-bool parseUrl(const string&input,string*title)
+bool parseUrl(const string&input,string*url)
 {
-
+  // 1.从input截取url的后缀
+  string tail = input.substr(g_input_path.size());
+  // 2.加上在线文档的路径前缀
+  string head = "https://www.boost.org/doc/libs/1_53_0/doc";
+  // 3.将构造好的放入title中
+  *url = head + tail;
+  return true;
 }
 
-bool parseContent(const string&input,string*title)
+bool parseContent(const string&html,string*content)
 {
+  bool isContent = true;
+  string tag;
+  //便利每一个html中的字符
+  for(auto c : html)
+  {
+    //判断是不是正文
+    if(isContent)
+    {
+      //判断是不是标签开始了
+      if(c == '<')
+        isContent = false;
+      else 
+      {
+        //判断是不是换行符
+        if(c == '\n')
+          c = ' ';
 
+        //将字符输出倒正文中
+        content->push_back(c);
+      }
+    }
+    else 
+    {
+      //如果标签结束了,就将siContent置为true
+      //这里需要去除js和css这两个标签里的内容,因为这些内容是一些没有必要的内容
+      if(c == '>')
+      {
+        isContent = true;
+      }
+    }
+  }
+  return true;
 }
 
 bool ParseFile(const string&input,DocInfo* docInfo) 
@@ -116,7 +153,10 @@ bool ParseFile(const string&input,DocInfo* docInfo)
   return true;
 
 }
-
+void writeOutput(const DocInfo&docInfo,ofstream &output)
+{
+  output << docInfo.title << "\3" << docInfo.url << "\3" << docInfo.content << endl;
+}
 int main()
 {
   vector<string> fileList;
@@ -136,14 +176,15 @@ int main()
 
   for(const auto &f : fileList)
   {
-    cout << "parse file: " << f << endl;
+    //cout << "parse file: " << f << endl;
     DocInfo docInfo;
     if(!ParseFile(f,&docInfo))
     {
       cout << "parse file failed" << endl;
       continue;
     }
+    writeOutput(docInfo,outPutFile);
   }
-
+  cout << "parse done" << endl;
   return 0;
 }

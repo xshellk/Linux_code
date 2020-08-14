@@ -2,7 +2,9 @@
 
 #include<string>
 #include<fstream>
+#include<vector>
 
+#include<boost/algorithm/string.hpp>
 
 namespace common{
 class Util{
@@ -25,6 +27,23 @@ public:
     file.close();
     return true;
 
+  }
+  static void split(const std::string &line,const std::string & dilimiter,std::vector<std::string> *output)
+  {
+    boost::split(*output,line,boost::is_any_of(dilimiter),boost::token_compress_off);
+  }
+  static bool tagIsNoContent(const std::string &tag)
+  {
+    if(tag == "js")
+      return true;
+    else if(tag == "css")
+      return true;
+    else if(tag == "/js")
+      return true;
+    else if(tag == "/css")
+      return true;
+
+    return false;
   }
 
 };
