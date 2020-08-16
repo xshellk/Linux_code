@@ -30,6 +30,8 @@ public:
   }
   static void split(const std::string &line,const std::string & dilimiter,std::vector<std::string> *output)
   {
+    //利用boost中所提供的方法,截取字符串
+    //C标准库提供了strtok函数,但C++并未提供
     boost::split(*output,line,boost::is_any_of(dilimiter),boost::token_compress_off);
   }
   static bool tagIsNoContent(const std::string &tag)

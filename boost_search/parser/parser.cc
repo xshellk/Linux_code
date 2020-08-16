@@ -23,6 +23,7 @@ public:
 };
 bool EnumFile(const string & input,vector<string> *output)
 {
+  //获取命名空间的方法可以通过赋值操作来完成
   namespace fs = boost::filesystem;
 
   fs::path rootPath(input);
@@ -31,6 +32,9 @@ bool EnumFile(const string & input,vector<string> *output)
     cout << "intput path not exists" << endl;
     return false;
   }
+  //通过boost中的特殊迭代器访问该目录下的所有文件
+  //如果是目录就跳过
+  //如果不是以 ".html" 作为结尾的文件都是不要的
   fs::recursive_directory_iterator endIter;
   for(fs::recursive_directory_iterator it(rootPath);it != endIter;++it)
   {
@@ -42,14 +46,15 @@ bool EnumFile(const string & input,vector<string> *output)
     {
       continue;
     }
+    //获得的路径信息放入output中
     output->push_back(it->path().string());
-
   }
 
   return true;
 }
 bool parseTitle(const string&input,string*title)
 {
+  //以title为分割,截取其中的内容
   size_t beg = input.find("<title>");
   if(beg == string::npos)
   {
@@ -62,7 +67,8 @@ bool parseTitle(const string&input,string*title)
     cout << "parse title failed,no end" << endl;
     return false;
   }
-
+  //从title标签开始的位置向后跳title标签的长度
+  //截取title的正文
   beg += string("<title>").size();
   *title = input.substr(beg,end - beg);
 
@@ -119,6 +125,8 @@ bool parseContent(const string&html,string*content)
 bool ParseFile(const string&input,DocInfo* docInfo) 
 {
   string html;
+  //读取input的文件到html中,input是一个路径信息
+  //读取整个路径指向的文件的所有信息放入html中
   bool ret = common::Util::read(input,&html);
   if(!ret)
   {
@@ -127,6 +135,7 @@ bool ParseFile(const string&input,DocInfo* docInfo)
   }
   
   //解析title
+  //查找html文件的标签信息来得到title信息
   ret = parseTitle(html,&docInfo->title);
   if(!ret)
   {
@@ -135,6 +144,7 @@ bool ParseFile(const string&input,DocInfo* docInfo)
   }
 
   //解析URL
+  //根据input路径信息,利用其构造一个在线路径信息
   ret = parseUrl(input,&docInfo->url);
   if(!ret)
   {
@@ -143,6 +153,7 @@ bool ParseFile(const string&input,DocInfo* docInfo)
   }
   
   //解析content
+  //从html中读取所有的非标签正文信息
   ret = parseContent(html,&docInfo->content);
   if(!ret)
   {
@@ -155,6 +166,8 @@ bool ParseFile(const string&input,DocInfo* docInfo)
 }
 void writeOutput(const DocInfo&docInfo,ofstream &output)
 {
+  //"\3" 是^C 标识符,选取一个不可见字符作为分割
+  //"\n" 作为每一个html文件全部索引的分割
   output << docInfo.title << "\3" << docInfo.url << "\3" << docInfo.content << endl;
 }
 int main()
@@ -174,6 +187,7 @@ int main()
     return 2;
   }
 
+  //将得到的结果放入临时文件里
   for(const auto &f : fileList)
   {
     //cout << "parse file: " << f << endl;
@@ -183,6 +197,7 @@ int main()
       cout << "parse file failed" << endl;
       continue;
     }
+    //写入文件
     writeOutput(docInfo,outPutFile);
   }
   cout << "parse done" << endl;
