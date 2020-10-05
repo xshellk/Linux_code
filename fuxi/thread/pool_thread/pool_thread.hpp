@@ -4,6 +4,29 @@
 #include<unistd.h>
 #include<pthread.h>
 #include<queue>
+
+
+void * Routine(void *arg);
+//{
+//  threadPool *self = (threadPool *)arg;
+//  while(true)
+//  {
+//    self->lockThread(); 
+
+//    while(self->taskIsEmpty())
+//    {
+//      self->waitThread();
+//    }
+//    self->signalThread();
+//    Task t;
+//    self->getTask(t);
+
+//    self->unlockThread();
+//    t.Run();
+//  }
+
+//}
+
 class Task
 {
 public:
@@ -21,7 +44,7 @@ public:
 
 class threadPool
 {
-private:
+public:
   bool taskIsEmpty()
   {
     return q.size() == 0;
@@ -54,26 +77,26 @@ public:
     q.push(t);
     signalThread();
   }
-  static void * Routine(void *arg)
-  {
-    threadPool *self = (threadPool *)arg;
-    while(true)
-    {
-      self->lockThread(); 
-
-      while(self->taskIsEmpty())
-      {
-        self->waitThread();
-      }
-      self->signalThread();
-      Task t;
-      self->getTask(t);
-
-      self->unlockThread();
-      t.Run();
-    }
-
-  }
+//  static void * Routine(void *arg)
+//  {
+//    threadPool *self = (threadPool *)arg;
+//    while(true)
+//    {
+//      self->lockThread(); 
+//
+//      while(self->taskIsEmpty())
+//      {
+//        self->waitThread();
+//      }
+//      self->signalThread();
+//      Task t;
+//      self->getTask(t);
+//
+//      self->unlockThread();
+//      t.Run();
+//    }
+//
+//  }
   void pthreadInit()
   {
     pthread_t tid;
@@ -99,3 +122,27 @@ private:
   std::queue<Task> q;
 
 };
+
+
+void * Routine(void *arg)
+{
+  threadPool *self = (threadPool *)arg;
+  while(true)
+  {
+    self->lockThread(); 
+
+    while(self->taskIsEmpty())
+    {
+      self->waitThread();
+    }
+    self->signalThread();
+    Task t;
+    self->getTask(t);
+
+    self->unlockThread();
+    t.Run();
+  }
+
+}
+
+
