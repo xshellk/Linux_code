@@ -1,0 +1,1 @@
+ -eLf | head -1 ; while : ; do ps -eLf | grep pool_thread; sleep 1;done;
