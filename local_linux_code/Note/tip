@@ -1,1 +1,0 @@
-安装man手册是，不能仅仅使用 yum install man进行安装，还要使用 yum install man-pages ，这样才能使man手册安装完全
