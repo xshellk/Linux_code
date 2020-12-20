@@ -74,9 +74,12 @@ class HttpRequest{
     {
       int start = 0;
       size_t pos = request_hander.find("\n");
-      if(pos != string::npos)
+      while(pos != string::npos)
       {
         string str = request_hander.substr(start,pos - start);
+        Util::MakeKV(hander_kv,str);
+        start = pos + 1;
+        pos = request_hander.find("\n",pos + 1);
       }
     }
     void UrlPrase()
@@ -142,7 +145,7 @@ class HttpRequest{
         {
           suffix = ".html";
         }
-        else 
+        else
         {
           suffix = path.substr(pos);
         }
