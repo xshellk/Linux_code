@@ -7,6 +7,7 @@
 #include<pthread.h>
 #include"Sock.hpp"
 #include<unistd.h>
+#include"io.hpp"
 
 
 #define Default_port 8081
@@ -19,6 +20,8 @@ class HttpServer{
     int listen_sock;
 
     ThreadPool* tp;
+    vector<int> KPspace;
+    Epoll* ep;
   
   public:
     HttpServer(int _port = Default_port):port(_port),listen_sock(-1)
@@ -27,6 +30,18 @@ class HttpServer{
     {
       if(listen_sock > 0)
         close(listen_sock);
+    }
+    static void *EpollThread(void * args)
+    {
+      HttpServer* server = (HttpServer *)args;
+      for(;;)
+      {
+        server->ep->Wait(server->tp);
+        cout << "debug ep val is" << endl;
+        for(int i = 0;i < ep->)
+
+        sleep(1);
+      }
     }
   
   public:
@@ -39,6 +54,11 @@ class HttpServer{
 
       tp = new ThreadPool;
       tp->InitThreadPool();
+      ep = new Epoll;
+      
+      pthread_t pid;
+      pthread_create(&pid,nullptr,EpollThread,this);
+
     }
     void Start()
     {
@@ -53,9 +73,18 @@ class HttpServer{
           //int *p = new int(sock);
           //pthread_create(&tid,nullptr,Entry::HanderRequest,(void *)p);
           //pthread_detach(tid);
-          Task t;
-          t.SetSock(sock,Entry::HanderRequest);
-          tp->PushTask(t);
+          
+          //old do
+          //Task t;
+          //t.SetSock(sock,Entry::HanderRequest);
+          //tp->PushTask(t);
+
+          //new do
+          //将链接的fd放入数组空间保存
+          KPspace.push_back(sock);
+          //进行epoll模型的注册
+          
+          ep->Add(sock);
         }
         else 
         {
