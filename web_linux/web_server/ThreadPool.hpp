@@ -36,7 +36,7 @@ class ThreadPool{
     pthread_cond_t cond;
 
   public:
-    ThreadPool(int _num = 5):num(_num)
+    ThreadPool(int _num = 3):num(_num)
     {
       pthread_mutex_init(&lock,nullptr);
       pthread_cond_init(&cond,nullptr);

@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>canvas画板</title>
+  </head>
+
+  <body>
+    <div style="width:1200px;height:700px;"><canvas style="background-color:#efefef;border:1px solid #ddd;" id="myCanvas"></canvas></div>
+
+    <div style="width:1200px;text-align:center;margin-top:30px;">
+      <button onclick="clean();">清 空</button>
+      <button onclick="save();">生成图片</button>
+    </div>
+
+    <img id='img' alt='' />
+
+    <script type="text/javascript">
+      var canvas,board,img;
+canvas = document.getElementById('myCanvas');
+img= document.getElementById('img');
+
+canvas.height = 700;
+canvas.width = 1200;
+
+board = canvas.getContext('2d');
+
+var mousePress = false;
+var last = null;
+
+function beginDraw(){
+  mousePress = true;
+
+}
+
+function drawing(event){
+  event.preventDefault();
+  if(!mousePress)return;
+  var xy = pos(event);
+  if(last!=null){
+    board.beginPath();
+    board.moveTo(last.x,last.y);
+    board.lineTo(xy.x,xy.y);
+    board.stroke();
+
+  }
+  last = xy;
+
+
+}
+
+function endDraw(event){
+  mousePress = false;
+  event.preventDefault();
+  last = null;
+
+}
+
+function pos(event){
+  var x,y;
+  if(isTouch(event)){
+    x = event.touches[0].pageX;
+    y = event.touches[0].pageY;
+
+  }else{
+    x = event.offsetX+event.target.offsetLeft;
+    y = event.offsetY+event.target.offsetTop;
+
+  }
+  return {x:x,y:y};
+
+}
+
+function log(msg){
+  var log = document.getElementById('log');
+  var val = log.value;
+  log.value = msg+'n'+val; 
+
+}
+
+function isTouch(event){
+  var type = event.type;
+  if(type.indexOf('touch')>=0){
+    return true;
+
+  }else{
+    return false;
+
+  }
+
+}
+
+function save(){
+  var dataUrl = canvas.toDataURL();
+  img.src = dataUrl;
+
+}
+
+
+function clean(){
+  board.clearRect(0,0,canvas.width,canvas.height);
+
+
+}
+
+board.lineWidth = 1;
+board.strokeStyle="#2AA6C0";
+canvas.onmousedown = beginDraw;
+canvas.onmousemove = drawing;
+canvas.onmouseup = endDraw;
+canvas.addEventListener('touchstart',beginDraw,false);
+canvas.addEventListener('touchmove',drawing,false);
+canvas.addEventListener('touchend',endDraw,false);
+    </script>
+
+
+  </body>
+</html>
