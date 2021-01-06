@@ -286,6 +286,7 @@ class Connect{
       while(c != '\n')
       {
         ssize_t s = recv(sock,&c,1,0);
+        //ssize_t s = read(sock,&c,1);
         if(s > 0)
         {
           if(c == '\r')
@@ -293,6 +294,7 @@ class Connect{
             recv(sock,&c,1,MSG_PEEK);
             if(c == '\n')
             {
+              //read(sock,&c,1);
               recv(sock,&c,1,0);
             }
             else 
@@ -403,6 +405,10 @@ class Entry{
       cout << "debug , content-type is " << line << endl;
       line += "\r\n";
       rsp->AddHttpResponseHander(line);
+      line += "Connection: keep-alive";
+      line += "\r\n";
+      rsp->AddHttpResponseHander(line);
+
       line = "Content-Length: ";
       if(!rq->IsCgi())
       {

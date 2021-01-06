@@ -43,15 +43,17 @@ public:
       LOG(Fatal,"epoll wait error");
       return false;
     }
-    cout << "debug nfds is " <<  nfds << endl;;
+    cout << "debug nfds is >" <<  nfds << endl;;
     for(int i = 0;i < nfds;i++)
     {
       int fd = epoll_events[i].data.fd;
-      cout << "dubug fd is :" << fd << endl;
+      cout << "dubug,get success fd is :" << fd << endl;
       
       Task t;
       t.SetSock(fd,Entry::HanderRequest);
       tp->PushTask(t);
+      //sleep(1);
+      usleep(10000);
       //任务已经创建好了, 可以引入线程池了
       //线程池因为提前绑定好了,可以直接使用
       //内置任务到线程池中

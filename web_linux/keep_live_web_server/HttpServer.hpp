@@ -38,9 +38,7 @@ class HttpServer{
       {
         server->ep->Wait(server->tp);
         cout << "debug ep val is" << endl;
-        for(int i = 0;i < ep->)
 
-        sleep(1);
       }
     }
   
@@ -82,6 +80,7 @@ class HttpServer{
           //new do
           //将链接的fd放入数组空间保存
           KPspace.push_back(sock);
+          cout << "debug new sock is :" << sock << endl;
           //进行epoll模型的注册
           
           ep->Add(sock);
