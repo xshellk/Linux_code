@@ -7,7 +7,7 @@
 #include"ThreadPool.hpp"
 #include"Protocol.hpp"
 
-#define EPOLL_SIZE 10
+#define EPOLL_SIZE 100
 
 class Epoll{
 private:
