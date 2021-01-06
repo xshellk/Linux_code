@@ -2,6 +2,7 @@
 
 #include<sys/epoll.h>
 #include<vector>
+#include<unordered_set>
 #include"Log.hpp"
 #include"ThreadPool.hpp"
 #include"Protocol.hpp"
@@ -9,6 +10,18 @@
 #define EPOLL_SIZE 10
 
 class Epoll{
+private:
+  bool Check(int fd)
+  {
+    unordered_set<int>::iterator it = RunThreadFd.find(fd);
+    if(it == RunThreadFd.end())
+    {
+      return false;
+    }
+    RunThreadFd.insert(fd);
+    return true;
+  }
+
 public:
   bool Add(const int fd)
   {
@@ -33,6 +46,7 @@ public:
     }
     return true;
   }
+  
   bool Wait(ThreadPool *tp)
   {
     epoll_event epoll_events[EPOLL_SIZE];
@@ -49,17 +63,15 @@ public:
       int fd = epoll_events[i].data.fd;
       cout << "dubug,get success fd is :" << fd << endl;
       
+      if(Check(fd))//检测是否该fd已经被线程去进行读取了
+      {
+        continue;
+      }
       Task t;
       t.SetSock(fd,Entry::HanderRequest);
       tp->PushTask(t);
       //sleep(1);
       usleep(10000);
-      //test
-      //任务已经创建好了, 可以引入线程池了
-      //线程池因为提前绑定好了,可以直接使用
-      //内置任务到线程池中
-      // 把fd给线程, 然后唤醒线程, 进行读取
-      // 输出也利用epoll进行控制
     }
     return true;
   }
@@ -73,5 +85,6 @@ public:
 
 private:
   int epoll_fd;
+  unordered_set<int> RunThreadFd;
 
 };

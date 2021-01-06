@@ -20,6 +20,10 @@ class Task{
       sock = _sock;
       h = handler;
     }
+    int GetFd()
+    {
+      return sock;
+    }
     void Run()
     {
       h((void*)&sock);
