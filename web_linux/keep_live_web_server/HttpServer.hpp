@@ -82,7 +82,6 @@ class HttpServer{
           KPspace.push_back(sock);
           cout << "debug new sock is :" << sock << endl;
           //进行epoll模型的注册
-          
           ep->Add(sock);
         }
         else 

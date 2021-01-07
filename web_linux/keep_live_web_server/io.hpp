@@ -7,7 +7,7 @@
 #include"ThreadPool.hpp"
 #include"Protocol.hpp"
 
-#define EPOLL_SIZE 100
+#define EPOLL_SIZE 1000
 
 class Epoll{
 private:
@@ -27,7 +27,7 @@ public:
   {
     epoll_event ev;
     ev.data.fd = fd;
-    ev.events = EPOLLIN;
+    ev.events = EPOLLIN | EPOLLET;
     int ret = epoll_ctl(epoll_fd,EPOLL_CTL_ADD,fd,&ev);
     if(ret < 0)
     {
@@ -72,6 +72,7 @@ public:
       tp->PushTask(t);
       //sleep(1);
       usleep(10000);
+      //cout << "debug, RunThreadFd size > " << RunThreadFd.bucket_count() << endl;
     }
     return true;
   }
