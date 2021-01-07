@@ -227,7 +227,13 @@ class HttpRequest{
     {}
 
     ~HttpRequest()
-    {}
+    {
+      if(fd > 0)
+      {
+        close(fd);
+        fd = -1;
+      }
+    }
 };
 
 class HttpResponse{
@@ -379,6 +385,7 @@ class Connect{
       if(!rq->IsCgi())
       {
         sendfile(sock,rq->GetFd(),nullptr,rq->GetFileSize());
+        //close(rq->GetFd());
       }
       else{
         string str = rsp->GetResponseBody();
@@ -412,6 +419,7 @@ class Entry{
       line = "Content-Length: ";
       if(!rq->IsCgi())
       {
+        // no cgi
         line += Util::IntToString(rq->GetFileSize());
         line += "\r\n";
         rsp->AddHttpResponseHander(line);
@@ -419,6 +427,7 @@ class Entry{
       }
       else
       {
+        // is cgi
         line += Util::IntToString((rsp->GetResponseBody()).size());
         line += "\r\n";
         rsp->AddHttpResponseHander(line);

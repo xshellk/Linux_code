@@ -22,12 +22,29 @@ private:
     return true;
   }
 
+  bool SetNoBlock(int fd)
+  {
+    int fl = fcntl(fd,F_GETFL);
+    if(fl < 0)
+    {
+      LOG(Warning,"get fl to set no block error");
+      return false;
+    }
+    int ret = fcntl(fd,F_SETFL | O_NONBLOCK);
+    if(ret < 0)
+    {
+      LOG(Warning,"set no block error");
+      return false;
+    }
+    return true;
+  }
 public:
   bool Add(const int fd)
   {
     epoll_event ev;
     ev.data.fd = fd;
     ev.events = EPOLLIN | EPOLLET;
+    SetNoBlock(fd);
     int ret = epoll_ctl(epoll_fd,EPOLL_CTL_ADD,fd,&ev);
     if(ret < 0)
     {
