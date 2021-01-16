@@ -9,7 +9,8 @@ HttpServer:main.cc
 
 .PHONY:
 clean:
-	rm -f HttpServer ./wwwroot/mkcgi/testcgi
+	rm -f HttpServer ./wwwroot/mkcgi/testcgi log.config
+
 
 .PHONY:
 output:
