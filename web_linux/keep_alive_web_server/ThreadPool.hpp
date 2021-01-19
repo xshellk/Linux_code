@@ -31,13 +31,17 @@ class Task{
     {
       h((void*)&sock);
     }
-    void FreeDoingFd(unordered_set<int> *p)
+    void FreeDoingFd()
+    {
+      auto delP = doingFd->find(sock);
+      if(delP != doingFd->end())
+      {
+        doingFd->erase(delP);
+      }
+    }
+    void SetDoingFd(unordered_set<int> *p)
     {
       doingFd = p;
-    }
-    void SetDoingFd()
-    {
-
     }
     
     ~Task()
@@ -104,7 +108,7 @@ class ThreadPool{
         Task t = tp->PopTask();
         tp->UnlockQueue();
         t.Run();
-        t.FreeFd();
+        t.FreeDoingFd();
 
       }
     }

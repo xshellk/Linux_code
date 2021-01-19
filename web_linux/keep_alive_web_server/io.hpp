@@ -86,11 +86,12 @@ public:
       }
       Task t;
       t.SetSock(fd,Entry::HanderRequest);
-      t.SetDoingFd(RunThreadFd);
+      t.SetDoingFd(&RunThreadFd);
 
       tp->PushTask(t);
       //sleep(1);
-      usleep(10000);
+      //usleep(10000);
+
       //cout << "debug, RunThreadFd size > " << RunThreadFd.bucket_count() << endl;
     }
     return true;
