@@ -21,6 +21,10 @@ using namespace std;
 #define WWWROOT "./wwwroot"
 #define WELCOME_PAGE "index.html"
 
+#define LinkNormal 1
+#define LinkError -1
+#define LinkClose 0
+
 class HttpRequest{
   private:
     string request_line;
@@ -285,10 +289,10 @@ class Connect{
   private:
     int sock;
   public:
-    bool RecvLine(string &line)
+    int RecvLine(string &line)
     {
-      bool ret = true;
-      char c = 'X' ;
+      int ret = LinkNormal;
+      char c = 'X';
       while(c != '\n')
       {
         ssize_t s = recv(sock,&c,1,0);
@@ -310,36 +314,43 @@ class Connect{
           }
           line.push_back(c);
         }
+        else if(s == 0) 
+        {
+          LOG(Normal,"clien close link");
+          ret = LinkClose;
+          break;
+        }
         else 
         {
           LOG(Warning,"recv request line error");
-          ret = false;
+          ret = LinkError;
           break;
         }
       }
       return ret;
       
     }
-    bool RecvHttpRequestLine(string &request_line)
+    int RecvHttpRequestLine(string &request_line)
     {
       return RecvLine(request_line);
     }
-    bool RecvHttpRequestHander(string &request_hander)
+    int RecvHttpRequestHander(string &request_hander)
     {
-      bool flag = true;
+      int flag = LinkNormal;
       string line = "";
       do{
         line = "";
-        if(RecvLine(line))
+      
+        flag = RecvLine(line);
+        if(flag == LinkNormal)
         {
           if(line != "\n")
           {
             request_hander += line;
           }
         }
-        else 
+        else if(flag == LinkClose || flag == LinkError)
         {
-          flag = false;
           break;
         }
       }while(line != "\n");
@@ -349,12 +360,19 @@ class Connect{
     {
       string request_line;
       string request_hander;
-      if(RecvHttpRequestLine(request_line)&&RecvHttpRequestHander(request_hander))
+      int retLine = RecvHttpRequestLine(request_line);
+      int retHander = RecvHttpRequestHander(request_hander);
+      if(retLine == LinkNormal && retHander == LinkNormal)
       {
         rq->SetHttpRequestLine(request_line);
         rq->SetHttpRequestHander(request_hander);
         return 200;
       }
+      else if(retLine == LinkClose || retHander == LinkClose)
+      {
+        return 408;
+      }
+
       return 404;
     }
     void RecvHttpRequestBody(HttpRequest *rq)
@@ -517,6 +535,11 @@ class Entry{
         rq->RequestLinePrase();
         rq->RequestHanderPrase();
       }
+      else if(code == 408)
+      {
+        LOG(Normal,"Client close Link");
+        goto end;
+      }
       else 
       {
         LOG(Error,"recv http request error");
@@ -554,6 +577,10 @@ class Entry{
       }
 
 end:
+      if(code == 408)
+      {
+
+      }
       MakeResponse(rq,rsp,code);
       cnn->SendResponse(rq,rsp);
 

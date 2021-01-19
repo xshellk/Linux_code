@@ -1,19 +1,29 @@
 #pragma once 
 
+
+#include<iostream>
+#include<pthread.h>
+#include<unistd.h>
+#include<queue>
+
+#include"io.hpp"
+#include"Log.hpp"
 #include"Sock.hpp"
 #include"Protocol.hpp"
 #include"ThreadPool.hpp"
-#include<iostream>
-#include<pthread.h>
 #include"Sock.hpp"
-#include<unistd.h>
-#include"io.hpp"
-#include"Log.hpp"
-
 
 #define Default_port 8081
 
 using namespace std;
+class KeepAliveLink
+{
+public:
+
+
+private:
+
+};
 
 class HttpServer{
   private:
@@ -21,7 +31,7 @@ class HttpServer{
     int listen_sock;
 
     ThreadPool* tp;
-    vector<int> KPspace;
+    queue<int> KPspace;
     Epoll* ep;
   
   public:
@@ -31,6 +41,14 @@ class HttpServer{
     {
       if(listen_sock > 0)
         close(listen_sock);
+    }
+    static void *CheckLinkThrea(void *args)
+    {
+      HttpServer* server = (HttpServer *)args;
+      for(;;)
+      {
+
+      }
     }
     static void *EpollThread(void * args)
     {
@@ -44,6 +62,11 @@ class HttpServer{
         }
 
       }
+    }
+
+    void PushKeepSpace(int _sock)
+    {
+      KPspace.push(_sock);
     }
   
   public:
@@ -60,6 +83,7 @@ class HttpServer{
       
       pthread_t pid;
       pthread_create(&pid,nullptr,EpollThread,this);
+      pthread_create(&pid,nullptr,CheckLinkThread,this);
 
     }
     void Start()
@@ -83,7 +107,7 @@ class HttpServer{
 
           //new do
           //将链接的fd放入数组空间保存
-          KPspace.push_back(sock);
+          PushKeepSpace(sock);
           cout << "debug new sock is :" << sock << endl;
           //进行epoll模型的注册
           ep->Add(sock);
