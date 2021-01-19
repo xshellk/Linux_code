@@ -32,7 +32,7 @@ class HttpServer{
 
     ThreadPool* tp;
     queue<int> KPspace;
-    Epoll* ep;
+    myEpoll* ep;
   
   public:
     HttpServer(int _port = Default_port):port(_port),listen_sock(-1)
@@ -42,7 +42,7 @@ class HttpServer{
       if(listen_sock > 0)
         close(listen_sock);
     }
-    static void *CheckLinkThrea(void *args)
+    static void *CheckLinkThread(void *args)
     {
       HttpServer* server = (HttpServer *)args;
       for(;;)
@@ -55,6 +55,7 @@ class HttpServer{
       HttpServer* server = (HttpServer *)args;
       for(;;)
       {
+        //bool ret = server->ep->Wait(server->tp,server->ep);
         bool ret = server->ep->Wait(server->tp);
         if(!ret)
         {
@@ -79,11 +80,13 @@ class HttpServer{
 
       tp = new ThreadPool;
       tp->InitThreadPool();
-      ep = new Epoll;
+      ep = new myEpoll;
       
       pthread_t pid;
       pthread_create(&pid,nullptr,EpollThread,this);
-      pthread_create(&pid,nullptr,CheckLinkThread,this);
+
+      //通过另外的线程进行链接的检测
+      //pthread_create(&pid,nullptr,CheckLinkThread,this);
 
     }
     void Start()

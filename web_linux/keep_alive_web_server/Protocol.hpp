@@ -15,6 +15,7 @@
 #include<fcntl.h>
 #include"Log.hpp"
 #include"Util.hpp"
+//#include"common.hpp"
 
 using namespace std;
 
@@ -522,8 +523,17 @@ class Entry{
     }
     static void *HanderRequest(void * args)
     {
-      int *p = (int*)args;
+      //混合参数
+      //ThreadParameter *threadPar = (ThreadParameter *)args;
+      //myEpoll *ep = threadPar->threadParameterEp;
+      //int sock = threadPar->threadParameterSock;
+
+
+      //单独传递sock
+      int *p = (int *)args;
       int sock = *p;
+
+
       int code = 200;
       Connect *cnn = new Connect(sock);
       HttpRequest *rq = new HttpRequest();
@@ -579,7 +589,11 @@ class Entry{
 end:
       if(code == 408)
       {
-
+        //ep->Del(sock);
+        delete cnn;
+        delete rq;
+        delete rsp;
+        return nullptr;
       }
       MakeResponse(rq,rsp,code);
       cnn->SendResponse(rq,rsp);

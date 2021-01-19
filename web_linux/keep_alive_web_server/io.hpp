@@ -9,7 +9,7 @@
 
 #define EPOLL_SIZE 1000
 
-class Epoll{
+class myEpoll{
 private:
   bool Check(int fd)
   {
@@ -63,6 +63,39 @@ public:
     }
     return true;
   }
+  //bool Wait(ThreadPool *tp,myEpoll *_ep)
+  //{
+  //  epoll_event epoll_events[EPOLL_SIZE];
+  //  int nfds = epoll_wait(epoll_fd,epoll_events,EPOLL_SIZE,-1);
+  //  
+  //  if(nfds < 0)
+  //  {
+  //    LOG(Fatal,"epoll wait error");
+  //    return false;
+  //  }
+  //  cout << "debug nfds is >" <<  nfds << endl;;
+  //  for(int i = 0;i < nfds;i++)
+  //  {
+  //    int fd = epoll_events[i].data.fd;
+  //    cout << "dubug,get success fd is :" << fd << endl;
+  //    
+  //    if(Check(fd))//检测是否该fd已经被线程去进行读取了
+  //    {
+  //      continue;
+  //    }
+  //    Task t;
+  //    t.SetSock(fd,Entry::HanderRequest);
+  //    t.SetDoingFd(&RunThreadFd);
+  //    t.SetEpoll(_ep);
+
+  //    tp->PushTask(t);
+  //    //sleep(1);
+  //    //usleep(10000);
+
+  //    //cout << "debug, RunThreadFd size > " << RunThreadFd.bucket_count() << endl;
+  //  }
+  //  return true;
+  //}
   
   bool Wait(ThreadPool *tp)
   {
@@ -87,6 +120,7 @@ public:
       Task t;
       t.SetSock(fd,Entry::HanderRequest);
       t.SetDoingFd(&RunThreadFd);
+      //t.SetEpoll(_ep);
 
       tp->PushTask(t);
       //sleep(1);
@@ -97,15 +131,15 @@ public:
     return true;
   }
 
-  Epoll()
+  myEpoll()
   {
     epoll_fd = epoll_create(EPOLL_SIZE);
   }
-  ~Epoll()
+  ~myEpoll()
   {}
 
 private:
   int epoll_fd;
   unordered_set<int> RunThreadFd;
-
 };
+

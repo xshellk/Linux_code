@@ -5,6 +5,9 @@
 #include<pthread.h>
 #include<unistd.h>
 #include<unordered_set>
+//#include"common.hpp"
+#include"io.hpp"
+
 
 using namespace std;
 
@@ -14,8 +17,10 @@ class Task{
   private:
     int sock;
     Handler_t h;
+    //myEpoll *ep;
     unordered_set<int> *doingFd;
   public:
+    
     Task(int _sock = -1):sock(_sock)
     {}
     void SetSock(int _sock,Handler_t handler)
@@ -29,7 +34,14 @@ class Task{
     }
     void Run()
     {
+      // 构造一个内部类, 将sock和*ep放进去, 然后根绝退出码来选择是否从epoll模型中清除
+      
+      //ThreadParameter tmp;
+      //tmp.threadParameterEp = ep;
+      //tmp.threadParameterSock = sock;
+      //h((void*)&tmp);
       h((void*)&sock);
+
     }
     void FreeDoingFd()
     {
@@ -43,6 +55,10 @@ class Task{
     {
       doingFd = p;
     }
+    //void SetEpoll(myEpoll *_ep)
+    //{
+    //  ep = _ep;
+    //}
     
     ~Task()
     {}
