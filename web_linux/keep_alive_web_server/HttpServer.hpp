@@ -8,6 +8,7 @@
 #include"Sock.hpp"
 #include<unistd.h>
 #include"io.hpp"
+#include"Log.hpp"
 
 
 #define Default_port 8081
@@ -36,8 +37,11 @@ class HttpServer{
       HttpServer* server = (HttpServer *)args;
       for(;;)
       {
-        server->ep->Wait(server->tp);
-        cout << "debug ep val is" << endl;
+        bool ret = server->ep->Wait(server->tp);
+        if(!ret)
+        {
+          LOG(Error,"epoll wait error");
+        }
 
       }
     }

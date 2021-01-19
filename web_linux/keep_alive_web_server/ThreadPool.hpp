@@ -4,6 +4,7 @@
 #include<queue>
 #include<pthread.h>
 #include<unistd.h>
+#include<unordered_set>
 
 using namespace std;
 
@@ -13,6 +14,7 @@ class Task{
   private:
     int sock;
     Handler_t h;
+    unordered_set<int> *doingFd;
   public:
     Task(int _sock = -1):sock(_sock)
     {}
@@ -29,6 +31,15 @@ class Task{
     {
       h((void*)&sock);
     }
+    void FreeDoingFd(unordered_set<int> *p)
+    {
+      doingFd = p;
+    }
+    void SetDoingFd()
+    {
+
+    }
+    
     ~Task()
     {}
 };
@@ -93,6 +104,8 @@ class ThreadPool{
         Task t = tp->PopTask();
         tp->UnlockQueue();
         t.Run();
+        t.FreeFd();
+
       }
     }
     void InitThreadPool()

@@ -86,6 +86,8 @@ public:
       }
       Task t;
       t.SetSock(fd,Entry::HanderRequest);
+      t.SetDoingFd(RunThreadFd);
+
       tp->PushTask(t);
       //sleep(1);
       usleep(10000);
