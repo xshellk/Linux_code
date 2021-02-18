@@ -27,6 +27,7 @@ int main()
   while(1)
   {
     int nfds = epoll_wait(epollfd,events,sizeof(events)/sizeof(events[0]),-1);
+    cout << "nfds is >" << nfds << endl;
     if(nfds < 0)
     {
       cerr << "epoll wait error" << endl;
